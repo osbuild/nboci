@@ -8,12 +8,14 @@ import (
 )
 
 type PushArgs struct {
-	File         []string `arg:"positional,required" help:"boot file"`
-	Repository   string   `arg:"-r,--repository,required" help:"repository (e.g. ghcr.io/user/repo)"`
-	Name         string   `arg:"-n,--name,required" help:"distribution name (e.g. fedora, debian)"`
-	Version      string   `arg:"-v,--version,required" help:"distribution version (e.g. 45, 9.6)"`
-	Architecture string   `arg:"-a,--arch,required" help:"architecture (e.g. x86_64, arm64)"`
-	Tag          string   `arg:"-t,--tag" help:"tag (default: name-version-arch)"`
+	File          []string `arg:"positional,required" help:"boot file"`
+	Repository    string   `arg:"-r,--repository,required" help:"repository (e.g. ghcr.io/user/repo)"`
+	Name          string   `arg:"-n,--osname,required" help:"distribution name (e.g. fedora, debian)"`
+	Version       string   `arg:"-v,--osversion,required" help:"distribution version (e.g. 45, 9.6)"`
+	Architecture  string   `arg:"-a,--osarch,required" help:"architecture (e.g. x86_64, arm64)"`
+	Tag           string   `arg:"-t,--tag" help:"tag (default: name-version-arch)"`
+	EntryPoint    string   `arg:"-e,--entrypoint,required" help:"entry point (default: shim.efi)"`
+	AltEntryPoint string   `arg:"-E,--alt-entrypoint" help:"alternative entry point"`
 }
 
 func Push(args PushArgs) {
@@ -69,14 +71,26 @@ func Push(args PushArgs) {
 	os.Chdir(dir)
 	defer os.Chdir(pwd)
 
-	// call oras
+	// prepare oras command
 	oras := []string{
 		"push",
 		fmt.Sprintf("%s:%s", args.Repository, args.Tag),
-		"--config", fmt.Sprintf("/dev/null:%s", MediaType),
-		"--artifact-type", ArtifactType,
+		"-a", fmt.Sprintf("org.pulpproject.netboot.os.name=%s", args.Name),
+		"-a", fmt.Sprintf("org.pulpproject.netboot.os.version=%s", args.Version),
+		"-a", fmt.Sprintf("org.pulpproject.netboot.os.arch=%s", args.Architecture),
+		"-a", fmt.Sprintf("org.pulpproject.netboot.entrypoint=%s", args.EntryPoint),
+		"--config", fmt.Sprintf("/dev/null:%s", EmptyType),
+		"--artifact-type", UnknownArtifactType,
+	}
+
+	// append files and args
+	if args.AltEntryPoint != "" && args.Architecture == "x86_64" {
+		oras = append(oras, "-a", fmt.Sprintf("org.pulpproject.netboot.altentrypoint=%s", args.AltEntryPoint))
+
 	}
 	oras = append(oras, ofiles...)
+
+	// call oras
 	err = ORAS(oras...)
 	if err != nil {
 		ExitWithError("oras push returned an error", err)

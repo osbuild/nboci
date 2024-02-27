@@ -2,7 +2,8 @@ package nboci
 
 import "regexp"
 
-const ArtifactType = "application/vnd.unknown.artifact.v1"
+const UnknownArtifactType = "application/vnd.unknown.artifact.v1"
+const EmptyType = "application/vnd.oci.empty.v1+json"
 const MediaType = "application/x-netboot-file+zstd"
 
 var AlphanumRegexp regexp.Regexp

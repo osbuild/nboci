@@ -8,7 +8,7 @@ import (
 	arg "github.com/alexflint/go-arg"
 )
 
-var args struct {
+type args struct {
 	Login   *nboci.LoginArgs `arg:"subcommand:login" help:"login to registry"`
 	Push    *nboci.PushArgs  `arg:"subcommand:push" help:"push files to registry"`
 	Quiet   bool
@@ -16,7 +16,12 @@ var args struct {
 	Debug   bool
 }
 
+func (a args) Version() string {
+	return "nboci 1.0.0"
+}
+
 func main() {
+	var args args
 	parser := arg.MustParse(&args)
 	if parser.Subcommand() == nil {
 		parser.Fail("missing subcommand")
