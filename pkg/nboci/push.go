@@ -1,6 +1,7 @@
 package nboci
 
 import (
+	"context"
 	"fmt"
 	"log/slog"
 	"os"
@@ -18,7 +19,7 @@ type PushArgs struct {
 	AltEntryPoint string   `arg:"-E,--alt-entrypoint" help:"alternative entry point"`
 }
 
-func Push(args PushArgs) {
+func Push(ctx context.Context, args PushArgs) {
 	// check arguments
 	slog.Debug("checking arguments", "name", args.Name, "version", args.Version, "arch", args.Architecture)
 	if !AlphanumRegexp.MatchString(args.Name) {
@@ -73,7 +74,7 @@ func Push(args PushArgs) {
 
 	// prepare oras command
 	oras := []string{
-		"push",
+		"push", "--no-tty",
 		fmt.Sprintf("%s:%s", args.Repository, args.Tag),
 		"-a", fmt.Sprintf("org.pulpproject.netboot.os.name=%s", args.Name),
 		"-a", fmt.Sprintf("org.pulpproject.netboot.os.version=%s", args.Version),

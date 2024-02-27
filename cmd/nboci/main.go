@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 
 	"github.com/lzap/oci-netboot/pkg/nboci"
@@ -11,6 +12,7 @@ import (
 type args struct {
 	Login   *nboci.LoginArgs `arg:"subcommand:login" help:"login to registry"`
 	Push    *nboci.PushArgs  `arg:"subcommand:push" help:"push files to registry"`
+	Pull    *nboci.PullArgs  `arg:"subcommand:pull" help:"pull files to registry"`
 	Quiet   bool
 	Verbose bool
 	Debug   bool
@@ -21,6 +23,7 @@ func (a args) Version() string {
 }
 
 func main() {
+	ctx := context.Background()
 	var args args
 	parser := arg.MustParse(&args)
 	if parser.Subcommand() == nil {
@@ -38,9 +41,11 @@ func main() {
 	}
 
 	if args.Login != nil {
-		nboci.Login(*args.Login)
+		nboci.Login(ctx, *args.Login)
 	} else if args.Push != nil {
-		nboci.Push(*args.Push)
+		nboci.Push(ctx, *args.Push)
+	} else if args.Pull != nil {
+		nboci.Pull(ctx, *args.Pull)
 	} else {
 		parser.Fail("unknown subcommand")
 	}

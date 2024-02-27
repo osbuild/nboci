@@ -1,11 +1,13 @@
 package nboci
 
+import "context"
+
 type LoginArgs struct {
 	Username string `help:"registry username"`
 	Password string `help:"registry password or token"`
 }
 
-func Login(args LoginArgs) {
+func Login(ctx context.Context, args LoginArgs) {
 	var err error
 	if args.Username == "" {
 		err = ORAS("login", "--password", args.Password)
