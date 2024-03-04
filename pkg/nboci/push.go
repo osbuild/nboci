@@ -23,19 +23,19 @@ func Push(ctx context.Context, args PushArgs) {
 	// check arguments
 	slog.Debug("checking arguments", "name", args.Name, "version", args.Version, "arch", args.Architecture)
 	if !AlphanumRegexp.MatchString(args.Name) {
-		ExitWithErrorMsg("invalid character in name")
+		Fatal("invalid character in name")
 	}
 	if !AlphanumRegexp.MatchString(args.Version) {
-		ExitWithErrorMsg("invalid character in version")
+		Fatal("invalid character in version")
 	}
 	if !AlphanumRegexp.MatchString(args.Architecture) {
-		ExitWithErrorMsg("invalid character in architecture")
+		Fatal("invalid character in architecture")
 	}
 	if !ArchRegexp.MatchString(args.Architecture) {
-		ExitWithErrorMsg("unknown architecture")
+		Fatal("unknown architecture")
 	}
 	if !AlphanumRegexp.MatchString(args.Name) {
-		ExitWithErrorMsg("invalid character in name")
+		Fatal("invalid character in name")
 	}
 
 	// generate tag
@@ -46,7 +46,7 @@ func Push(ctx context.Context, args PushArgs) {
 	// create a temporary dir
 	dir, err := os.MkdirTemp("", "oci-netboot-")
 	if err != nil {
-		ExitWithError("Cannot create temp directory", err)
+		FatalErr(err, "Cannot create temp directory")
 	}
 	defer os.RemoveAll(dir)
 
@@ -57,7 +57,7 @@ func Push(ctx context.Context, args PushArgs) {
 		slog.Debug("compressing file", "from", f, "to", dest)
 		err := Command("zstd", "-9", "-q", f, "-o", dest)
 		if err != nil {
-			ExitWithError("zstd compressor returned error", err)
+			FatalErr(err, "zstd compressor returned error")
 		}
 
 		ofiles = append(ofiles, fmt.Sprintf("%s:%s", path.Base(f), MediaType))
@@ -67,7 +67,7 @@ func Push(ctx context.Context, args PushArgs) {
 	slog.Debug("switching to temp directory", "dir", dir)
 	pwd, err := os.Getwd()
 	if err != nil {
-		ExitWithError("cannot get workding directory", err)
+		FatalErr(err, "cannot get workding directory")
 	}
 	os.Chdir(dir)
 	defer os.Chdir(pwd)
@@ -94,6 +94,6 @@ func Push(ctx context.Context, args PushArgs) {
 	// call oras
 	err = ORAS(oras...)
 	if err != nil {
-		ExitWithError("oras push returned an error", err)
+		FatalErr(err, "oras push returned an error")
 	}
 }

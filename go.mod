@@ -9,6 +9,7 @@ require github.com/alexflint/go-scalar v1.1.0 // indirect
 require (
 	github.com/alexflint/go-arg v1.4.3
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
+	github.com/klauspost/compress v1.17.7
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0-rc4 // indirect
 	github.com/oras-project/oras-credentials-go v0.2.0 // indirect

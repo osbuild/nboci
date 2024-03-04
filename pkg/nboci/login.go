@@ -16,6 +16,6 @@ func Login(ctx context.Context, args LoginArgs) {
 	}
 
 	if err != nil {
-		ExitWithError("oras failed to login", err)
+		FatalErr(err, "oras failed to login")
 	}
 }

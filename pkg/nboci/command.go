@@ -8,13 +8,13 @@ import (
 func Command(cmd string, args ...string) error {
 	binary, err := exec.LookPath(cmd)
 	if err != nil {
-		ExitWithErrorf("cannot find '%s' on path, install zstd compressor", err, binary)
+		FatalErrf(err, "cannot find '%s' on path, install zstd compressor", binary)
 	}
 
 	slog.Debug("executing", "bin", binary, "args", args)
 	c := exec.Command(binary, args...)
-	c.Stdout = SlogWriter{Logger: slog.Default(), Level: slog.LevelDebug}
-	c.Stderr = SlogWriter{Logger: slog.Default(), Level: slog.LevelWarn}
+	c.Stdout = OutputWriter{}
+	c.Stderr = OutputWriter{}
 
 	return c.Run()
 }
