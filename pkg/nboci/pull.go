@@ -40,13 +40,10 @@ func Pull(ctx context.Context, args PullArgs) {
 	}
 	defer fs.Close()
 
-	var tags []string
+	var onlyTag string
 	ss := strings.SplitN(args.Source, ":", 2)
-	if len(ss) < 2 {
-		// todo - detect all tags from a repo
-		tags = append(tags, "latest")
-	} else {
-		tags = []string{ss[1]}
+	if len(ss) >= 2 {
+		onlyTag = ss[1]
 	}
 
 	repo, err := remote.NewRepository(ss[0])
@@ -61,7 +58,7 @@ func Pull(ctx context.Context, args PullArgs) {
 
 	err = repo.Tags(ctx, "", func(tags []string) error {
 		for _, tag := range tags {
-			if strings.HasSuffix(tag, ".sig") {
+			if (onlyTag != "" && tag != onlyTag) || (strings.HasSuffix(tag, ".sig")) {
 				continue
 			}
 
