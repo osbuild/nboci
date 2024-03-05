@@ -88,6 +88,10 @@ The utility will sychronize files and only download those files which checksums 
                 ├── initrd.img
                 └── vmlinuz
 
+## Signing files
+
+Commits can be digitally signed, this is work in progress.
+
 ## How files are stored
 
 This is described in the [specification](https://github.com/ipanova/netboot-oci-specs). Here is an example:

@@ -1,3 +1,4 @@
 /.vscode
 /fixtures
 /nboci
+__debug_*

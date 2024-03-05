@@ -5,10 +5,12 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/klauspost/compress/zstd"
@@ -85,6 +87,7 @@ func Pull(ctx context.Context, args PullArgs) {
 				if err != nil {
 					continue
 				}
+				dirname := path.Join(args.Destination, destPath)
 
 				ss, err := content.Successors(ctx, repo, desc)
 				if err != nil {
@@ -101,7 +104,6 @@ func Pull(ctx context.Context, args PullArgs) {
 						Fatal("artifact is missing org.opencontainers.image.title annotation for", s.Digest.String())
 					}
 
-					dirname := path.Join(args.Destination, destPath)
 					err := os.MkdirAll(dirname, 0777)
 					if err != nil {
 						FatalErr(err, "cannot create destination directory")
@@ -126,12 +128,54 @@ func Pull(ctx context.Context, args PullArgs) {
 						Fatal("downloaded file", filename, "has different digest", hash, "than expected", rdigest)
 					}
 				}
+
+				ep := manifest.Annotations["org.pulpproject.netboot.entrypoint"]
+				ensureEntrypoint(path.Join(dirname, "boot"), path.Join(dirname, filepath.Base(ep)))
+				aep := manifest.Annotations["org.pulpproject.netboot.altentrypoint"]
+				ensureEntrypoint(path.Join(dirname, "boot-alt"), path.Join(dirname, filepath.Base(aep)))
 			}
 		}
 		return nil
 	})
 	if err != nil {
 		FatalErr(err, "cannot list tags")
+	}
+}
+
+func ensureEntrypoint(link, dest string) {
+	if dest == "" {
+		return
+	}
+
+	if _, err := os.Stat(dest); errors.Is(err, os.ErrNotExist) {
+		ErrorErr(err, "entrypoint destination not exist")
+	}
+
+	orig, err := os.Readlink(link)
+	if err != nil && errors.Is(err, os.ErrNotExist) {
+		// does not exist
+		makeSymlink(link, dest)
+		return
+	} else if err != nil {
+		// not a symlink
+		ErrorErr(err, "cannot create entrypoint symlink")
+	}
+
+	if filepath.Base(orig) != filepath.Base(dest) {
+		// is different symlink
+		err = os.Remove(link)
+		if err != nil {
+			FatalErr(err, "cannot remove existing file", link)
+		}
+		makeSymlink(link, dest)
+	}
+}
+
+func makeSymlink(link, dest string) {
+	Debug("updating entrypoint", filepath.Base(link), "->", filepath.Base(dest))
+	err := os.Symlink(filepath.Base(dest), link)
+	if err != nil {
+		ErrorErr(err, "cannot create symlink")
 	}
 }
 
