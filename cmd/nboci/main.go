@@ -12,7 +12,7 @@ type args struct {
 	Login   *nboci.LoginArgs  `arg:"subcommand:login" help:"login to registry"`
 	Logout  *nboci.LogoutArgs `arg:"subcommand:logout" help:"logout from registry"`
 	Push    *nboci.PushArgs   `arg:"subcommand:push" help:"push files to registry"`
-	List    *nboci.PullArgs   `arg:"subcommand:list" help:"list available tags in registry"`
+	List    *nboci.ListArgs   `arg:"subcommand:list" help:"list available tags in registry"`
 	Pull    *nboci.PullArgs   `arg:"subcommand:pull" help:"pull files to registry"`
 	Verbose bool
 }
@@ -37,6 +37,8 @@ func main() {
 		nboci.Login(ctx, *args.Login)
 	} else if args.Logout != nil {
 		nboci.Logout(ctx, *args.Logout)
+	} else if args.List != nil {
+		nboci.List(ctx, *args.List)
 	} else if args.Push != nil {
 		nboci.Push(ctx, *args.Push)
 	} else if args.Pull != nil {
