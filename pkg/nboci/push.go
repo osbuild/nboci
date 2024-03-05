@@ -16,6 +16,7 @@ import (
 	"github.com/opencontainers/go-digest"
 	"github.com/opencontainers/image-spec/specs-go"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	credentials "github.com/oras-project/oras-credentials-go"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
@@ -25,8 +26,6 @@ import (
 type PushArgs struct {
 	File          []string `arg:"positional,required" help:"boot file"`
 	Plain         bool     `arg:"-N,--plain" help:"plain HTTP (insecure)"`
-	Username      string   `arg:"-U,--username" help:"registry username"`
-	Password      string   `arg:"-P,--password" help:"registry password (or token)"`
 	Repository    string   `arg:"-r,--repository,required" help:"repository (e.g. ghcr.io/user/repo)"`
 	Name          string   `arg:"-n,--osname,required" help:"distribution name (e.g. fedora, debian)"`
 	Version       string   `arg:"-v,--osversion,required" help:"distribution version (e.g. 45, 9.6)"`
@@ -67,12 +66,7 @@ func Push(ctx context.Context, args PushArgs) {
 	repo.Client = &auth.Client{
 		Client: retry.DefaultClient,
 		Cache:  auth.DefaultCache,
-		Credential: func(ctx context.Context, _ string) (auth.Credential, error) {
-			return auth.Credential{
-				Username: args.Username,
-				Password: args.Password,
-			}, nil
-		},
+		Credential: credentials.Credential(NewStore()),
 	}
 	if args.Plain {
 		repo.PlainHTTP = true

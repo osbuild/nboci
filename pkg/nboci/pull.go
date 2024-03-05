@@ -13,6 +13,7 @@ import (
 
 	"github.com/klauspost/compress/zstd"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	credentials "github.com/oras-project/oras-credentials-go"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras-go/v2/registry/remote"
@@ -52,8 +53,9 @@ func Pull(ctx context.Context, args PullArgs) {
 	}
 
 	repo.Client = &auth.Client{
-		Client: retry.DefaultClient,
-		Cache:  auth.NewCache(),
+		Client:     retry.DefaultClient,
+		Cache:      auth.NewCache(),
+		Credential: credentials.Credential(NewStore()),
 	}
 
 	err = repo.Tags(ctx, "", func(tags []string) error {
