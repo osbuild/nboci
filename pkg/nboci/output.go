@@ -16,7 +16,7 @@ func Debug(messages ...string) {
 	Print(messages...)
 }
 
-func Debugf(format string, args ...string) {
+func Debugf(format string, args ...any) {
 	if !Verbose {
 		return
 	}
@@ -37,7 +37,7 @@ func Print(messages ...string) {
 	fmt.Printf("\n")
 }
 
-func Printf(format string, args ...string) {
+func Printf(format string, args ...any) {
 	fmt.Printf(format, args)
 }
 
@@ -45,7 +45,7 @@ func Error(messages ...string) {
 	fmt.Fprintf(os.Stderr, "%s\n", strings.Join(messages, " "))
 }
 
-func Errorf(format string, args ...string) {
+func Errorf(format string, args ...any) {
 	msg := fmt.Sprintf(format, args)
 	fmt.Fprintf(os.Stderr, "%s\n", msg)
 }
@@ -59,7 +59,7 @@ func Fatal(messages ...string) {
 	os.Exit(1)
 }
 
-func Fatalf(format string, args ...string) {
+func Fatalf(format string, args ...any) {
 	msg := fmt.Sprintf(format, args)
 	fmt.Fprintf(os.Stderr, "%s\n", msg)
 	os.Exit(1)
@@ -70,13 +70,7 @@ func FatalErr(err error, messages ...string) {
 	os.Exit(1)
 }
 
-func FatalfErr(err error, format string, args ...string) {
-	msg := fmt.Sprintf(format, args)
-	fmt.Fprintf(os.Stderr, "%s: %s\n", msg, err.Error())
-	os.Exit(1)
-}
-
-func FatalErrf(err error, format string, args ...string) {
+func FatalfErr(err error, format string, args ...any) {
 	msg := fmt.Sprintf(format, args)
 	fmt.Fprintf(os.Stderr, "%s: %s\n", msg, err.Error())
 	os.Exit(1)

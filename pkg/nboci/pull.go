@@ -92,7 +92,7 @@ func Pull(ctx context.Context, args PullArgs) {
 
 				for _, s := range ss {
 					Debug("Successor", s.Digest.String(), s.MediaType)
-					if s.MediaType != MediaType {
+					if s.MediaType != NetbootFileZstdMediaType {
 						Debug("Skipping", s.Digest.String())
 						continue
 					}
@@ -200,5 +200,5 @@ func download(ctx context.Context, repo *remote.Repository, desc ocispec.Descrip
 	}
 
 	sum := hw.Sum(nil)
-	return hex.EncodeToString(sum), nil
+	return fmt.Sprintf("sha256:%s", hex.EncodeToString(sum)), nil
 }

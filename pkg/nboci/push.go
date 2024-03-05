@@ -1,15 +1,32 @@
 package nboci
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
-	"path"
+	"path/filepath"
+
+	"github.com/klauspost/compress/zstd"
+	"github.com/opencontainers/go-digest"
+	"github.com/opencontainers/image-spec/specs-go"
+	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"oras.land/oras-go/v2/content"
+	"oras.land/oras-go/v2/registry/remote"
+	"oras.land/oras-go/v2/registry/remote/auth"
+	"oras.land/oras-go/v2/registry/remote/retry"
 )
 
 type PushArgs struct {
 	File          []string `arg:"positional,required" help:"boot file"`
+	Plain         bool     `arg:"-N,--plain" help:"plain HTTP (insecure)"`
+	Username      string   `arg:"-U,--username" help:"registry username"`
+	Password      string   `arg:"-P,--password" help:"registry password (or token)"`
 	Repository    string   `arg:"-r,--repository,required" help:"repository (e.g. ghcr.io/user/repo)"`
 	Name          string   `arg:"-n,--osname,required" help:"distribution name (e.g. fedora, debian)"`
 	Version       string   `arg:"-v,--osversion,required" help:"distribution version (e.g. 45, 9.6)"`
@@ -20,7 +37,6 @@ type PushArgs struct {
 }
 
 func Push(ctx context.Context, args PushArgs) {
-	// check arguments
 	slog.Debug("checking arguments", "name", args.Name, "version", args.Version, "arch", args.Architecture)
 	if !AlphanumRegexp.MatchString(args.Name) {
 		Fatal("invalid character in name")
@@ -43,57 +59,163 @@ func Push(ctx context.Context, args PushArgs) {
 		args.Tag = fmt.Sprintf("%s-%s-%s", args.Name, args.Version, args.Architecture)
 	}
 
-	// create a temporary dir
-	dir, err := os.MkdirTemp("", "oci-netboot-")
+	repo, err := remote.NewRepository(args.Repository)
 	if err != nil {
-		FatalErr(err, "Cannot create temp directory")
+		FatalErr(err, "cannot create repository")
 	}
+
+	repo.Client = &auth.Client{
+		Client: retry.DefaultClient,
+		Cache:  auth.DefaultCache,
+		Credential: func(ctx context.Context, _ string) (auth.Credential, error) {
+			return auth.Credential{
+				Username: args.Username,
+				Password: args.Password,
+			}, nil
+		},
+	}
+	if args.Plain {
+		repo.PlainHTTP = true
+	}
+
+	dir := mkTempDir()
 	defer os.RemoveAll(dir)
 
-	// copy and compress files into the temporary dir
-	ofiles := make([]string, 0, len(args.File))
+	//layers := make([]*Layer, 0, len(args.File))
+	descs := make([]ocispec.Descriptor, 0, len(args.File))
 	for _, f := range args.File {
-		dest := path.Join(dir, path.Base(f))
-		slog.Debug("compressing file", "from", f, "to", dest)
-		err := Command("zstd", "-9", "-q", f, "-o", dest)
+		Debug("compressing file", f)
+		a, err := newArtifact(f)
 		if err != nil {
-			FatalErr(err, "zstd compressor returned error")
+			FatalErr(err, "cannot load file")
 		}
+		d := *a.Descriptor()
+		//layers = append(layers, a)
+		descs = append(descs, d)
 
-		ofiles = append(ofiles, fmt.Sprintf("%s:%s", path.Base(f), MediaType))
+		Debug("pushing file", f)
+		Debugf("Pushing layer %+v\n", d)
+		err = repo.Push(ctx, d, a.Reader())
+		if err != nil {
+			FatalErr(err, "cannot push layer")
+		}
 	}
 
-	// switch to the temp directory
-	slog.Debug("switching to temp directory", "dir", dir)
-	pwd, err := os.Getwd()
+	manifest, err := generateManifest(ocispec.DescriptorEmptyJSON,
+		args.Name,
+		args.Version,
+		args.Architecture,
+		args.EntryPoint,
+		args.AltEntryPoint,
+		descs...)
 	if err != nil {
-		FatalErr(err, "cannot get workding directory")
-	}
-	os.Chdir(dir)
-	defer os.Chdir(pwd)
-
-	// prepare oras command
-	oras := []string{
-		"push", "--no-tty",
-		fmt.Sprintf("%s:%s", args.Repository, args.Tag),
-		"-a", fmt.Sprintf("org.pulpproject.netboot.os.name=%s", args.Name),
-		"-a", fmt.Sprintf("org.pulpproject.netboot.os.version=%s", args.Version),
-		"-a", fmt.Sprintf("org.pulpproject.netboot.os.arch=%s", args.Architecture),
-		"-a", fmt.Sprintf("org.pulpproject.netboot.entrypoint=%s", args.EntryPoint),
-		"--config", fmt.Sprintf("/dev/null:%s", EmptyType),
-		"--artifact-type", UnknownArtifactType,
+		FatalErr(err, "cannot generate manifest")
 	}
 
-	// append files and args
-	if args.AltEntryPoint != "" && args.Architecture == "x86_64" {
-		oras = append(oras, "-a", fmt.Sprintf("org.pulpproject.netboot.altentrypoint=%s", args.AltEntryPoint))
+	desc := content.NewDescriptorFromBytes(ocispec.MediaTypeImageManifest, manifest)
 
-	}
-	oras = append(oras, ofiles...)
-
-	// call oras
-	err = ORAS(oras...)
+	Debugf("Pushing config %+v\n", ocispec.DescriptorEmptyJSON)
+	err = repo.Push(ctx, ocispec.DescriptorEmptyJSON, bytes.NewReader(ocispec.DescriptorEmptyJSON.Data))
 	if err != nil {
-		FatalErr(err, "oras push returned an error")
+		FatalErr(err, "cannot push config")
 	}
+	Debugf("Pushing manifest %+v\n", desc)
+	err = repo.PushReference(ctx, desc, bytes.NewReader(manifest), "test")
+	if err != nil {
+		FatalErr(err, "cannot push manifest")
+	}
+}
+
+type Artifact struct {
+	filename  string
+	buf       []byte
+	srcSize   int64
+	srcDigest string
+	size      int64
+	digest    string
+}
+
+func (a *Artifact) Descriptor() *ocispec.Descriptor {
+	return &ocispec.Descriptor{
+		MediaType: NetbootFileZstdMediaType,
+		Digest:    digest.Digest(a.digest),
+		Size:      a.size,
+		Annotations: map[string]string{
+			"org.opencontainers.image.title":     a.filename,
+			"org.pulpproject.netboot.src.size":   fmt.Sprintf("%d", a.srcSize),
+			"org.pulpproject.netboot.src.digest": a.srcDigest,
+		},
+	}
+}
+
+func (a *Artifact) Reader() io.Reader {
+	return bytes.NewReader(a.buf)
+}
+
+func compress(in io.Reader, out io.Writer) (string, error) {
+	enc, err := zstd.NewWriter(out, zstd.WithEncoderLevel(zstd.SpeedBestCompression))
+	if err != nil {
+		return "", err
+	}
+	defer enc.Close()
+
+	hw := sha256.New()
+	tr := io.TeeReader(in, hw)
+
+	_, err = io.Copy(enc, tr)
+	if err != nil {
+		return "", err
+	}
+
+	sum := hw.Sum(nil)
+	return fmt.Sprintf("sha256:%s", hex.EncodeToString(sum)), nil
+}
+
+func newArtifact(file string) (*Artifact, error) {
+	f, err := os.Open(file)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	fs, err := f.Stat()
+	if err != nil {
+		return nil, err
+	}
+
+	srcSize := fs.Size()
+	buf := bytes.Buffer{}
+	buf.Grow(int(srcSize))
+	sd, err := compress(f, &buf)
+	if err != nil {
+		return nil, err
+	}
+
+	buffer := buf.Bytes()
+	return &Artifact{
+		filename:  filepath.Base(file),
+		buf:       buffer,
+		size:      int64(len(buffer)),
+		digest:    digest.FromBytes(buffer).String(),
+		srcSize:   srcSize,
+		srcDigest: sd,
+	}, nil
+}
+
+func generateManifest(config ocispec.Descriptor, name, version, arch, entry, altentry string, layers ...ocispec.Descriptor) ([]byte, error) {
+	content := ocispec.Manifest{
+		ArtifactType: UnknownArtifactType,
+		MediaType:    ocispec.MediaTypeImageManifest,
+		Config:       config,
+		Layers:       layers,
+		Versioned:    specs.Versioned{SchemaVersion: 2},
+		Annotations: map[string]string{
+			"org.pulpproject.netboot.os.name":       name,
+			"org.pulpproject.netboot.os.version":    version,
+			"org.pulpproject.netboot.os.arch":       arch,
+			"org.pulpproject.netboot.entrypoint":    entry,
+			"org.pulpproject.netboot.altentrypoint": altentry,
+		},
+	}
+	return json.Marshal(content)
 }

@@ -8,7 +8,7 @@ import (
 func Command(cmd string, args ...string) error {
 	binary, err := exec.LookPath(cmd)
 	if err != nil {
-		FatalErrf(err, "cannot find '%s' on path, install zstd compressor", binary)
+		FatalfErr(err, "cannot find '%s' on path, install zstd compressor", binary)
 	}
 
 	slog.Debug("executing", "bin", binary, "args", args)
