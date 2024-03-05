@@ -22,7 +22,7 @@ import (
 
 type PullArgs struct {
 	Source      string `arg:"positional,required" help:"repository:tag" placeholder:"REPOSITORY:{TAG|DIGEST}"`
-	Destination string `arg:"-d,--destination" default:"." help:"destination directory (default: .)" placeholder:"DIRECTORY"`
+	Destination string `arg:"-d,--destination" default:"." help:"destination directory (default: pwd)" placeholder:"DIRECTORY"`
 }
 
 func Pull(ctx context.Context, args PullArgs) {
@@ -61,13 +61,17 @@ func Pull(ctx context.Context, args PullArgs) {
 
 	err = repo.Tags(ctx, "", func(tags []string) error {
 		for _, tag := range tags {
+			if strings.HasSuffix(tag, ".sig") {
+				continue
+			}
+
 			desc, err := repo.Resolve(ctx, tag)
 			if err != nil {
 				return err
 			}
 
 			if desc.MediaType == ocispec.MediaTypeImageManifest {
-				Debug("Found", tag, desc.ArtifactType, desc.MediaType)
+				Debug("processing", tag)
 
 				blob, err := content.FetchAll(ctx, repo, desc)
 				if err != nil {
@@ -78,11 +82,9 @@ func Pull(ctx context.Context, args PullArgs) {
 					return err
 				}
 
-				//Debug("Annotations", fmt.Sprintf("%v", manifest.Annotations))
-
 				destPath, err := makePath(manifest.Annotations)
 				if err != nil {
-					DebugErr(err, "Skipping descriptor without annotations", desc.Digest.String())
+					continue
 				}
 
 				ss, err := content.Successors(ctx, repo, desc)
@@ -91,13 +93,10 @@ func Pull(ctx context.Context, args PullArgs) {
 				}
 
 				for _, s := range ss {
-					Debug("Successor", s.Digest.String(), s.MediaType)
 					if s.MediaType != NetbootFileZstdMediaType {
-						Debug("Skipping", s.Digest.String())
 						continue
 					}
 
-					//Debug("Annotations", fmt.Sprintf("%v", manifest.Annotations))
 					name, ok := s.Annotations["org.opencontainers.image.title"]
 					if !ok {
 						Fatal("artifact is missing org.opencontainers.image.title annotation for", s.Digest.String())
@@ -111,16 +110,14 @@ func Pull(ctx context.Context, args PullArgs) {
 					filename := path.Join(dirname, name)
 
 					fdigest, _ := fileDigest(filename)
-					Debug("digest of existing file", fdigest)
-
-					rdigest, ok := s.Annotations["org.pulpproject.netboot.digest"]
+					rdigest, ok := s.Annotations["org.pulpproject.netboot.src.digest"]
 					if ok && rdigest == fdigest {
-						Debug("digest matches, skipping", filename)
+						Debug("digest match for", filename)
 						continue
 					}
 
 					// download
-					Print("downloading", s.Digest.String(), "to", filename)
+					Print("downloading", filename)
 					hash, err := download(ctx, repo, s, filename)
 					if err != nil {
 						FatalErr(err, "cannot download", filename)
@@ -130,8 +127,6 @@ func Pull(ctx context.Context, args PullArgs) {
 						Fatal("downloaded file", filename, "has different digest", hash, "than expected", rdigest)
 					}
 				}
-			} else {
-				Debug("Skip", tag, desc.ArtifactType, desc.MediaType, fmt.Sprintf("%v", desc.Annotations))
 			}
 		}
 		return nil
@@ -170,7 +165,7 @@ func fileDigest(filename string) (string, error) {
 	}
 
 	sum := hash.Sum(nil)
-	return hex.EncodeToString(sum), nil
+	return fmt.Sprintf("sha256:%s", hex.EncodeToString(sum)), nil
 }
 
 func download(ctx context.Context, repo *remote.Repository, desc ocispec.Descriptor, dest string) (string, error) {

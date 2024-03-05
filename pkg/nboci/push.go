@@ -81,20 +81,17 @@ func Push(ctx context.Context, args PushArgs) {
 	dir := mkTempDir()
 	defer os.RemoveAll(dir)
 
-	//layers := make([]*Layer, 0, len(args.File))
 	descs := make([]ocispec.Descriptor, 0, len(args.File))
 	for _, f := range args.File {
-		Debug("compressing file", f)
+		Debug("compressing", f)
 		a, err := newArtifact(f)
 		if err != nil {
 			FatalErr(err, "cannot load file")
 		}
 		d := *a.Descriptor()
-		//layers = append(layers, a)
 		descs = append(descs, d)
 
-		Debug("pushing file", f)
-		Debugf("Pushing layer %+v\n", d)
+		Debug("pushing", f)
 		err = repo.Push(ctx, d, a.Reader())
 		if err != nil {
 			FatalErr(err, "cannot push layer")
@@ -120,7 +117,7 @@ func Push(ctx context.Context, args PushArgs) {
 		FatalErr(err, "cannot push config")
 	}
 	Debugf("Pushing manifest %+v\n", desc)
-	err = repo.PushReference(ctx, desc, bytes.NewReader(manifest), "test")
+	err = repo.PushReference(ctx, desc, bytes.NewReader(manifest), args.Tag)
 	if err != nil {
 		FatalErr(err, "cannot push manifest")
 	}
