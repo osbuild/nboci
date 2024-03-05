@@ -64,8 +64,8 @@ func Push(ctx context.Context, args PushArgs) {
 	}
 
 	repo.Client = &auth.Client{
-		Client: retry.DefaultClient,
-		Cache:  auth.DefaultCache,
+		Client:     retry.DefaultClient,
+		Cache:      auth.DefaultCache,
 		Credential: credentials.Credential(NewStore()),
 	}
 	if args.Plain {
@@ -105,12 +105,13 @@ func Push(ctx context.Context, args PushArgs) {
 
 	desc := content.NewDescriptorFromBytes(ocispec.MediaTypeImageManifest, manifest)
 
-	Debugf("Pushing config %+v\n", ocispec.DescriptorEmptyJSON)
+	Print("pushing config")
 	err = repo.Push(ctx, ocispec.DescriptorEmptyJSON, bytes.NewReader(ocispec.DescriptorEmptyJSON.Data))
 	if err != nil {
 		FatalErr(err, "cannot push config")
 	}
-	Debugf("Pushing manifest %+v\n", desc)
+
+	Print("pushing manifest")
 	err = repo.PushReference(ctx, desc, bytes.NewReader(manifest), args.Tag)
 	if err != nil {
 		FatalErr(err, "cannot push manifest")

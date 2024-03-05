@@ -24,7 +24,7 @@ No binaries are currently available, you need Go 1.21+ to build the CLI tool:
 Getting boot files is different depending on the target operating system. Here is an example for Fedora installation ISO:
 
     wget http://fedora/Fedora-netboot-XX.iso
-    7za x Fedora-netboot-XX.iso
+    7z x Fedora-netboot-XX.iso
     sha256sum EFI/BOOT/BOOTX64.EFI EFI/BOOT/grubx64.efi images/pxeboot/vmlinuz images/pxeboot/initrd.img
 
 In the examples below, these files will be pushed:
@@ -61,6 +61,12 @@ Files are compressed via zstd and pushed, content is tagged with the following t
     osname-osversion-osarch
 
 Tag name can ve overriden with `--tag` argument.
+
+Other examples:
+
+    ./nboci --verbose push --repository ghcr.io/lzap/bootc-netboot-example --osname rhel --osversion 9.3.0 --osarch x86_64 --entrypoint shim.efi --alt-entrypoint grubx64.efi fixtures/rhel-9.3.0-x86_64/*
+
+    ./nboci --verbose push --repository ghcr.io/lzap/bootc-netboot-example --osname rhel --osversion 9.3.0 --osarch aarch64 --entrypoint shim.efi --alt-entrypoint grubaa64.efi fixtures/rhel-9.3.0-aarch64/*
 
 ## Pulling boot files
 
@@ -162,3 +168,8 @@ This is described in the [specification](https://github.com/ipanova/netboot-oci-
 ## LICENSE
 
 Apache License 2.0
+
+## TODO
+
+* rename repo to nboci
+* cosign integration
