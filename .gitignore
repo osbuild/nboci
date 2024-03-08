@@ -2,3 +2,5 @@
 /fixtures
 /nboci
 __debug_*
+/*.key
+/*.pub

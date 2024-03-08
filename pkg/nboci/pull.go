@@ -133,6 +133,8 @@ func Pull(ctx context.Context, args PullArgs) {
 				ensureEntrypoint(path.Join(dirname, "boot"), path.Join(dirname, filepath.Base(ep)))
 				aep := manifest.Annotations["org.pulpproject.netboot.altentrypoint"]
 				ensureEntrypoint(path.Join(dirname, "boot-alt"), path.Join(dirname, filepath.Base(aep)))
+				lep := manifest.Annotations["org.pulpproject.netboot.legacyentrypoint"]
+				ensureEntrypoint(path.Join(dirname, "boot-legacy"), path.Join(dirname, filepath.Base(lep)))
 			}
 		}
 		return nil

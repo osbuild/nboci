@@ -24,15 +24,16 @@ import (
 )
 
 type PushArgs struct {
-	File          []string `arg:"positional,required" help:"boot file"`
-	Plain         bool     `arg:"-N,--plain" help:"plain HTTP (insecure)"`
-	Repository    string   `arg:"-r,--repository,required" help:"repository (e.g. ghcr.io/user/repo)"`
-	Name          string   `arg:"-n,--osname,required" help:"distribution name (e.g. fedora, debian)"`
-	Version       string   `arg:"-v,--osversion,required" help:"distribution version (e.g. 45, 9.6)"`
-	Architecture  string   `arg:"-a,--osarch,required" help:"architecture (e.g. x86_64, arm64)"`
-	Tag           string   `arg:"-t,--tag" help:"tag (default: name-version-arch)"`
-	EntryPoint    string   `arg:"-e,--entrypoint,required" help:"entry point (default: shim.efi)"`
-	AltEntryPoint string   `arg:"-E,--alt-entrypoint" help:"alternative entry point"`
+	File             []string `arg:"positional,required" help:"boot file"`
+	Plain            bool     `arg:"-N,--plain" help:"plain HTTP (insecure)"`
+	Repository       string   `arg:"-r,--repository,required" help:"repository (e.g. ghcr.io/user/repo)"`
+	Name             string   `arg:"-n,--osname,required" help:"distribution name (e.g. fedora, debian)"`
+	Version          string   `arg:"-v,--osversion,required" help:"distribution version (e.g. 45, 9.6)"`
+	Architecture     string   `arg:"-a,--osarch,required" help:"architecture (e.g. x86_64, arm64)"`
+	Tag              string   `arg:"-t,--tag" help:"tag (default: name-version-arch)"`
+	EntryPoint       string   `arg:"-e,--entrypoint,required" help:"entry point (default: shim.efi)"`
+	AltEntryPoint    string   `arg:"-E,--alt-entrypoint" help:"alternative entry point"`
+	LegacyEntryPoint string   `arg:"-G,--legacy-entrypoint" help:"legacy entry point"`
 }
 
 func Push(ctx context.Context, args PushArgs) {
@@ -98,6 +99,7 @@ func Push(ctx context.Context, args PushArgs) {
 		args.Architecture,
 		args.EntryPoint,
 		args.AltEntryPoint,
+		args.LegacyEntryPoint,
 		descs...)
 	if err != nil {
 		FatalErr(err, "cannot generate manifest")
@@ -194,7 +196,7 @@ func newArtifact(file string) (*Artifact, error) {
 	}, nil
 }
 
-func generateManifest(config ocispec.Descriptor, name, version, arch, entry, altentry string, layers ...ocispec.Descriptor) ([]byte, error) {
+func generateManifest(config ocispec.Descriptor, name, version, arch, entry, altentry, legentry string, layers ...ocispec.Descriptor) ([]byte, error) {
 	content := ocispec.Manifest{
 		ArtifactType: UnknownArtifactType,
 		MediaType:    ocispec.MediaTypeImageManifest,
@@ -202,11 +204,12 @@ func generateManifest(config ocispec.Descriptor, name, version, arch, entry, alt
 		Layers:       layers,
 		Versioned:    specs.Versioned{SchemaVersion: 2},
 		Annotations: map[string]string{
-			"org.pulpproject.netboot.os.name":       name,
-			"org.pulpproject.netboot.os.version":    version,
-			"org.pulpproject.netboot.os.arch":       arch,
-			"org.pulpproject.netboot.entrypoint":    entry,
-			"org.pulpproject.netboot.altentrypoint": altentry,
+			"org.pulpproject.netboot.os.name":          name,
+			"org.pulpproject.netboot.os.version":       version,
+			"org.pulpproject.netboot.os.arch":          arch,
+			"org.pulpproject.netboot.entrypoint":       entry,
+			"org.pulpproject.netboot.altentrypoint":    altentry,
+			"org.pulpproject.netboot.legacyentrypoint": legentry,
 		},
 	}
 	return json.Marshal(content)

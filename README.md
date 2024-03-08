@@ -34,6 +34,8 @@ In the examples below, these files will be pushed:
     63f6ee372f74353dd90ac5287a621d8a41694369ee6241f2bd980a3537d19789  images/pxeboot/vmlinuz
     f0aed0be4c2f68c97c320717fc223ec6feb2688473a2785f3e09a53ed240d8db  images/pxeboot/initrd.img
 
+The same files can be also found in RPM packages named `shim-x64` and `grub2-efi-x64`. Additionally, PXELinux bootloader for legacy (BIOS) systems can be only found in `syslinux-tftpboot` package.
+
 It is recommended to copy them into single directory and rename `BOOTX64.EFI` to just `shim.efi`.
 
 ## Pushing boot files
@@ -43,8 +45,9 @@ Each push operation requires the following input:
 * Operating system name (lowercase, alphanum)
 * Operating system version (lowercase, alphanum, dots allowed)
 * Operating system architecture (lowercase, alphanum, underscore allowed)
-* Entrypoint: filename that is supposed to be booted (when SecureBoot is on on x86_64)
-* Alternate entrypoint: filename that is supposed to be booted alternatively (when SecureBoot is off)
+* Entrypoint: bootoader filename as the entrypoint (e.g. when SecureBoot is on on x86_64)
+* Alternate entrypoint: bootoader filename as the alternative entrypoint (e.g. when SecureBoot is off on x86_64)
+* Legacy entrypoint: bootoader filename for legacy systems (e.g. BIOS mode on x86_64) 
 
 Example:
 
@@ -54,7 +57,8 @@ Example:
         --osarch x86_64 \
         --entrypoint shim.efi \
         --alt-entrypoint grubx64.efi \
-        shim.efi grubx64.efi vmlinuz initrd.img
+        --legacy-entrypoint pxelinux.0 \
+        shim.efi grubx64.efi pxelinux.0 vmlinuz initrd.img
 
 Files are compressed via zstd and pushed, content is tagged with the following tag:
 
@@ -91,6 +95,8 @@ The utility will sychronize files and only download those files which checksums 
                 ├── boot (-> shim.efi)
                 ├── grubx64.efi
                 ├── boot-alt (-> grubx64.efi)
+                ├── pxelinux.0
+                ├── boot-legacy (-> pxelinux.0)
                 ├── initrd.img
                 └── vmlinuz
 
@@ -136,6 +142,16 @@ This is described in the [specification](https://github.com/ipanova/netboot-oci-
     },
     {
       "mediaType": "application/x-netboot-file+zstd",
+      "digest": "sha256:d50baa5d4bf3af0fabebc7871b884be83f368c83dbe0ce1733087615808a6c15",
+      "size": 41637,
+      "annotations": {
+        "org.opencontainers.image.title": "pxelinux.0",
+        "org.pulpproject.netboot.src.digest": "sha256:dfcdf626efa753db88de0bf513c4c2e1c4e46cf084371e294e5f6864f16c2e01",
+        "org.pulpproject.netboot.src.size": "42555"
+      }
+    },
+    {
+      "mediaType": "application/x-netboot-file+zstd",
       "digest": "sha256:e0180821662f2072771ecfbe4a242b3d7782126d06e1fa965f61e1247485943d",
       "size": 13020437,
       "annotations": {
@@ -156,8 +172,9 @@ This is described in the [specification](https://github.com/ipanova/netboot-oci-
     }
   ],
   "annotations": {
-    "org.pulpproject.netboot.altentrypoint": "grubx64.efi",
     "org.pulpproject.netboot.entrypoint": "shim.efi",
+    "org.pulpproject.netboot.altentrypoint": "grubx64.efi",
+    "org.pulpproject.netboot.legacyentrypoint": "pxelinux.0",
     "org.pulpproject.netboot.os.arch": "x86_64",
     "org.pulpproject.netboot.os.name": "rhel",
     "org.pulpproject.netboot.os.version": "9.3.0"
