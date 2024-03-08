@@ -2,10 +2,11 @@ package main
 
 import (
 	"context"
-
-	"github.com/lzap/oci-netboot/pkg/nboci"
+	"runtime/debug"
+	"strings"
 
 	arg "github.com/alexflint/go-arg"
+	"github.com/lzap/nboci/pkg/nboci"
 )
 
 type args struct {
@@ -18,7 +19,18 @@ type args struct {
 }
 
 func (a args) Version() string {
-	return "nboci 1.0.0"
+	str := strings.Builder{}
+	str.WriteString("nboci " + nboci.BuildCommit + "\n" + nboci.BuildGoVersion + " " + nboci.BuildTime + "\n")
+
+	if bi, ok := debug.ReadBuildInfo(); ok {
+		for _, dep := range bi.Deps {
+			if strings.Contains(dep.Path, "oras") || strings.Contains(dep.Path, "sigstore") {
+				str.WriteString(dep.Path + " " + dep.Version + "\n")
+			}
+		}
+	}
+
+	return str.String()
 }
 
 func main() {

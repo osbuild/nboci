@@ -1,4 +1,4 @@
-module github.com/lzap/oci-netboot
+module github.com/lzap/nboci
 
 go 1.21
 
@@ -8,6 +8,7 @@ require github.com/alexflint/go-scalar v1.1.0 // indirect
 
 require (
 	github.com/alexflint/go-arg v1.4.3
+	github.com/icza/bitio v1.1.0
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
 	github.com/klauspost/compress v1.17.7
 	github.com/opencontainers/go-digest v1.0.0 // indirect
