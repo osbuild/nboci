@@ -8,7 +8,7 @@ import (
 	"strings"
 	"syscall"
 
-	credentials "github.com/oras-project/oras-credentials-go"
+	"oras.land/oras-go/v2/registry/remote/credentials"
 	"golang.org/x/term"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"

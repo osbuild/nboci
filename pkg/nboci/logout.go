@@ -3,7 +3,7 @@ package nboci
 import (
 	"context"
 
-	credentials "github.com/oras-project/oras-credentials-go"
+	"oras.land/oras-go/v2/registry/remote/credentials"
 )
 
 type LogoutArgs struct {

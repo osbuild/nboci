@@ -15,8 +15,8 @@ import (
 
 	"github.com/klauspost/compress/zstd"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	credentials "github.com/oras-project/oras-credentials-go"
-	"github.com/sigstore/cosign/cmd/cosign/cli/verify"
+	"oras.land/oras-go/v2/registry/remote/credentials"
+	"github.com/sigstore/cosign/v2/cmd/cosign/cli/verify"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras-go/v2/registry/remote"
