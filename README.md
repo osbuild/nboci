@@ -102,7 +102,18 @@ The utility will sychronize files and only download those files which checksums 
 
 ## Signing files
 
-Commits can be digitally signed, this is work in progress.
+Commits can be digitally signed using [cosign](https://github.com/sigstore/cosign).
+
+```
+cosign generate-key-pair
+cosign sign --key cosign.key -y ghcr.io/lzap/bootc-netboot-example:rhel-9.3.0-x86_64
+```
+
+To verify content before it is pulled, use `-k` or `--signature-key` option.
+
+    ./nboci pull --signature-key cosign.pub --destination /tmp/test ghcr.io/lzap/bootc-netboot-example
+
+If key is incorrect or signature is missing from the repo, the utility does not download the content.
 
 ## How files are stored
 

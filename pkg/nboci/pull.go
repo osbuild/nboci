@@ -16,6 +16,7 @@ import (
 	"github.com/klauspost/compress/zstd"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	credentials "github.com/oras-project/oras-credentials-go"
+	"github.com/sigstore/cosign/cmd/cosign/cli/verify"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras-go/v2/registry/remote"
@@ -24,8 +25,9 @@ import (
 )
 
 type PullArgs struct {
-	Source      string `arg:"positional,required" help:"repository:tag" placeholder:"REPOSITORY:{TAG|DIGEST}"`
-	Destination string `arg:"-d,--destination" default:"." help:"destination directory (default: pwd)" placeholder:"DIRECTORY"`
+	Source       string `arg:"positional,required" help:"repository:tag" placeholder:"REPOSITORY:{TAG|DIGEST}"`
+	Destination  string `arg:"-d,--destination" default:"." help:"destination directory (default: pwd)" placeholder:"DIRECTORY"`
+	SignatureKey string `arg:"-k,--signature-key" help:"signature public key" placeholder:"COSIGN_PUBLIC_FILE"`
 }
 
 func Pull(ctx context.Context, args PullArgs) {
@@ -49,7 +51,8 @@ func Pull(ctx context.Context, args PullArgs) {
 		onlyTag = ss[1]
 	}
 
-	repo, err := remote.NewRepository(ss[0])
+	repoWithoutTag := ss[0]
+	repo, err := remote.NewRepository(repoWithoutTag)
 	if err != nil {
 		panic(err)
 	}
@@ -69,6 +72,20 @@ func Pull(ctx context.Context, args PullArgs) {
 			desc, err := repo.Resolve(ctx, tag)
 			if err != nil {
 				return err
+			}
+
+			if args.SignatureKey != "" {
+				ref := fmt.Sprintf("%s:%s", repoWithoutTag, tag)
+				Debug("checking signature of", ref)
+				// verify using cosign - this will print some messages to stdout/stderr
+				verifyCmd := verify.VerifyCommand{
+					KeyRef: args.SignatureKey,
+					Output: "text",
+				}
+				err = verifyCmd.Exec(ctx, []string{ref})
+				if err != nil {
+					return err
+				}
 			}
 
 			if desc.MediaType == ocispec.MediaTypeImageManifest {
