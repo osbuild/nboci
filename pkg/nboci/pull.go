@@ -15,12 +15,12 @@ import (
 
 	"github.com/klauspost/compress/zstd"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"oras.land/oras-go/v2/registry/remote/credentials"
 	"github.com/sigstore/cosign/v2/cmd/cosign/cli/verify"
 	"oras.land/oras-go/v2/content"
 	"oras.land/oras-go/v2/content/file"
 	"oras.land/oras-go/v2/registry/remote"
 	"oras.land/oras-go/v2/registry/remote/auth"
+	"oras.land/oras-go/v2/registry/remote/credentials"
 	"oras.land/oras-go/v2/registry/remote/retry"
 )
 
@@ -162,7 +162,7 @@ func Pull(ctx context.Context, args PullArgs) {
 }
 
 func ensureEntrypoint(link, dest string) {
-	if dest == "" {
+	if link == "" || dest == "" {
 		return
 	}
 
